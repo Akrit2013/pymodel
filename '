@@ -1,0 +1,219 @@
+#!/usr/bin/python
+
+# This tools box contains the functions related to the segment map
+# which is as label map normally begin with 0
+import numpy as np
+import glog as log
+
+
+def get_neighbor_ids(segmap, label):
+    """
+    Given the current superpixel label, and return the label list which is
+    the neighbor superpixels
+    """
+    max_h = segmap.shape[0] - 1
+    max_w = segmap.shape[1] - 1
+    pos_hw = np.where(segmap == label)
+
+    label_h_list = pos_hw[0]
+    label_w_list = pos_hw[1]
+
+    up_h_list = label_h_list - 1
+    up_h_list[up_h_list < 0] = 0
+
+    down_h_list = label_h_list + 1
+    down_h_list[down_h_list > max_h] = max_h
+
+    left_w_list = label_w_list - 1
+    left_w_list[left_w_list < 0] = 0
+
+    right_w_list = label_w_list + 1
+    right_w_list[right_w_list > max_w] = max_w
+
+    # Check the label
+    # 4-connection
+    upper = segmap[up_h_list, label_w_list]
+    down = segmap[down_h_list, label_w_list]
+    left = segmap[label_h_list, left_w_list]
+    right = segmap[label_h_list, right_w_list]
+
+    # 8-connection
+    upper_left = segmap[up_h_list, left_w_list]
+    upper_right = segmap[up_h_list, right_w_list]
+    down_left = segmap[down_h_list, left_w_list]
+    down_right = segmap[down_h_list, right_w_list]
+
+    combine = upper.tolist() + down.tolist() + left.tolist() + right.tolist()\
+        + upper_left.tolist() + upper_right.tolist() + down_left.tolist()\
+        + down_right.tolist()
+    combine = np.unique(combine)
+    combine = combine.tolist()
+    combine.remove(label)
+    return combine
+
+
+def check_if_neighbor(segmap, label1, label2):
+    """
+    Check if two superpixel blocks are nearby each other
+    """
+    max_h = segmap.shape[0] - 1
+    max_w = segmap.shape[1] - 1
+
+    pos_hw = np.where(segmap == label1)
+    label1_h_list = pos_hw[0]
+    label1_w_list = pos_hw[1]
+
+    up_h_list = label1_h_list - 1
+    up_h_list[up_h_list < 0] = 0
+
+    down_h_list = label1_h_list + 1
+    down_h_list[down_h_list > max_h] = max_h
+
+    left_w_list = label1_w_list - 1
+    left_w_list[left_w_list < 0] = 0
+
+    right_w_list = label1_w_list + 1
+    right_w_list[right_w_list > max_w] = max_w
+
+    # Check the label
+    # 4-connection
+    upper = segmap[up_h_list, label1_w_list]
+    down = segmap[down_h_list, label1_w_list]
+    left = segmap[label1_h_list, left_w_list]
+    right = segmap[label1_h_list, right_w_list]
+
+    # 8-connection
+    upper_left = segmap[up_h_list, left_w_list]
+    upper_right = segmap[up_h_list, right_w_list]
+    down_left = segmap[down_h_list, left_w_list]
+    down_right = segmap[down_h_list, right_w_list]
+
+    if label2 in upper or label2 in down or label2 in right or label2 in left:
+        return True
+
+    if label2 in upper_left or label2 in upper_right or\
+            label2 in down_right or label2 in down_left:
+        return True
+    return False
+
+
+def get_central_coord(segmap, label):
+    """
+    Get the central coordinate of a certain superpixel
+    """
+    pos_hw = np.where(segmap == label)
+
+    label_h_list = pos_hw[0]
+    label_w_list = pos_hw[1]
+
+    return round(label_h_list.mean()), round(label_w_list.mean())
+
+
+def superpixel_unpool(segmap, vec):
+    """
+    Unpooling the vec into the segment image
+    The size of the vec must equal with the number of the superpixels
+    The vec can be a [n] dim vec, or can be a [n, c] image, the c indicate
+    the channels
+    """
+    vec = np.array(vec)
+    if vec.ndim == 1:
+        return superpixel_unpool_channel(segmap, vec)
+    if vec.ndim > 2:
+        log.error('\033[01;31mERROR\033[0m: The channel must be \
+smaller than 2')
+        return
+    rst = np.zeros([segmap.shape[0], segmap.shape[1], vec.shape[1]])
+    for i in range(vec.shape[1]):
+        rst[:, :, i] = superpixel_unpool_channel(segmap, vec[:, i])
+    return rst
+
+
+def superpixel_unpool_channel(segmap, vec):
+    """
+    Only can unpool a one channel image
+    """
+    if vec.ndim > 1:
+        log.error('\033[01;31mERROR\033[0m: The channels must be 1')
+        return
+
+    rst = np.zeros(segmap.shape)
+    for i in range(len(vec)):
+        rst[segmap == i] = vec[i]
+    return rst
+
+
+def superpixel_unpool_with_normal(segmap, dep_vec, norm_vec, fx, fy):
+    """
+    This function is an extend version of the superpixel_unpool
+    This function will take the normal vector direction into consideration
+    which means it will produce a much smooth depth map than the
+    superpixel_unpool function.
+    PARAM:
+        segmap      The segment map with full resolution
+        dep_vec     The depth vector corresponding to each superpixel
+        norm_vec    The normal vector corresponding to each superpixel
+        fx          The focal length (in pixel) of col
+        fy          The focal length (in pixel) of row
+    NOTE:
+        Different from the superpixel_unpool function, this function
+        can only produce the depth map that means the channel of the
+        dep_vec must be one
+    """
+    dep_vec = np.array(dep_vec)
+    norm_vec = np.array(norm_vec)
+    if dep_vec.ndim > 1:
+        log.error('\033[01;31mERROR\033[0m: The channel number of dep \
+vec must be 1')
+        return
+
+    if norm_vec.ndim != 2:
+        log.error('\033[01;31mERROR\033[0m: The channel number of norm \
+vec must be 2')
+        return
+
+    dep_map = np.zeros(segmap.shape)
+
+    # Iter the superpixel
+    for i in range(len(dep_vec)):
+        # The normal vector of the superpixel
+        norm = norm_vec[i, :]
+        # TODO: The Z is reversed
+        dx = -norm[0] / abs(norm[2])
+        dy = -norm[1] / abs(norm[2])
+        # Get the pixel location of the current superpixel
+        pos_hw = np.where(segmap == i)
+
+        label_h_list = pos_hw[0]
+        label_w_list = pos_hw[1]
+        h_central = round(label_h_list.mean())
+        w_central = round(label_w_list.mean())
+
+        curr_dep = dep_vec[i]
+
+        # Iter the pixels
+        for h, w in zip(label_h_list, label_w_list):
+            ph_diff = h - h_central
+            pw_diff = w - w_central
+            h_diff = ph_diff * curr_dep / fy
+            w_diff = pw_diff * curr_dep / fx
+            pred_dep = curr_dep + dx * w_diff + dy * h_diff
+            dep_map[h, w] = pred_dep
+
+    return dep_map
+
+
+def superpixel_unpool_with_interpolation(segmap,
+        dep_vec, norm_vec, rad_thd, dep_map=None):
+    """
+    This is another version of the superpixel_unpool.
+    This version use interpolation to make the depth map smoother.
+    It will gather the superpixel into groups according to their normal vector
+    and perform the interpolation WITHIN the group.
+    NOTE:
+        Since their is possibility that some superpixel can not be grouped
+        this function support the predefined dep map. If the dep_map param
+        is set, it will be considered as the default depth if a superpixel
+        is not connected with others
+    """
+

@@ -106,7 +106,11 @@ def guess_language(subtitle):
     # Parse the candidate string
     if 'chs' in cand_string:
         return 'chi'
+    if 'chinese' in cand_string:
+        return 'chi'
     if 'cht' in cand_string:
+        return 'chi'
+    if 'chi' in cand_string:
         return 'chi'
     if '简体' in cand_string:
         return 'chi'
@@ -118,5 +122,56 @@ def guess_language(subtitle):
         return 'eng'
     if '英文' in cand_string:
         return 'eng'
+    if 'english' in cand_string:
+        return 'eng'
+
+    return None
+
+
+def guess_track_name(subtitle):
+    """
+    This function guess the subtitle name according to the subtitle
+    file name
+    """
+    # Try to decode if Chinese char exist
+    word_list = subtitle.split('.')
+    if len(word_list) <= 2:
+        return None
+    if len(word_list) == 3:
+        cand_string = word_list[-2]
+    else:
+        cand_string = word_list[-2] + word_list[-3]
+
+    cand_string = cand_string.lower()
+    has_chi = False
+    has_eng = False
+    # Parse the candidate string
+    if 'chs' in cand_string:
+        has_chi = True
+    if 'cht' in cand_string:
+        has_chi = True
+    if 'chi' in cand_string:
+        has_chi = True
+    if '简体' in cand_string:
+        has_chi = True
+    if '繁体' in cand_string:
+        has_chi = True
+    if '中文' in cand_string:
+        has_chi = True
+    if 'chinese' in cand_string:
+        has_chi = True
+    if 'eng' in cand_string:
+        has_eng = True
+    if '英文' in cand_string:
+        has_eng = True
+    if 'english' in cand_string:
+        has_eng = True
+
+    if has_eng and has_chi:
+        return '中英双语'
+    if has_eng:
+        return '英文'
+    if has_chi:
+        return '中文'
 
     return None

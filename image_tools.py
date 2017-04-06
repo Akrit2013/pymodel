@@ -230,3 +230,16 @@ not match with the input')
     im[b, :] = out_color
 
     return im
+
+
+def imcrop(im, crop_rate):
+    """
+    Perform central crop according to the crop_rate
+    """
+    d0_size = int(float(im.shape[0]) * crop_rate)
+    d1_size = int(float(im.shape[1]) * crop_rate)
+    d0_beg = (im.shape[0]-d0_size) / 2
+    d1_beg = (im.shape[1]-d1_size) / 2
+    im_crop = im[d0_beg:d0_beg+d0_size, d1_beg:d1_beg+d1_size, :]
+
+    return im_crop

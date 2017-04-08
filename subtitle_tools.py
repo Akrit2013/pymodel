@@ -145,17 +145,18 @@ def guess_track_name(subtitle):
     cand_string = cand_string.lower()
     has_chi = False
     has_eng = False
+    has_cht = False
     # Parse the candidate string
     if 'chs' in cand_string:
         has_chi = True
     if 'cht' in cand_string:
-        has_chi = True
+        has_cht = True
     if 'chi' in cand_string:
         has_chi = True
     if '简体' in cand_string:
         has_chi = True
     if '繁体' in cand_string:
-        has_chi = True
+        has_cht = True
     if '中文' in cand_string:
         has_chi = True
     if 'chinese' in cand_string:
@@ -173,5 +174,9 @@ def guess_track_name(subtitle):
         return '英文'
     if has_chi:
         return '中文'
+    if has_cht:
+        return '繁体中文'
+    if has_cht and has_eng:
+        return '繁体中英'
 
     return None

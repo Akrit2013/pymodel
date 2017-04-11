@@ -208,3 +208,17 @@ def replace_datalist_part(datalist, path, warning=True):
 in the path %s' % (pure_name, path))
 
     return datalist_out
+
+
+def replace_path(org_full_name, target_path):
+    """
+    This function replace the original path to the new path, which is commonly
+    used when copying the files
+    """
+    word_list = os.path.split(org_full_name)
+    if target_path[-1] == '/':
+        rst = target_path + word_list[-1]
+    else:
+        rst = target_path + '/' + word_list[-1]
+
+    return rst

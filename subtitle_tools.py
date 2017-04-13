@@ -95,16 +95,22 @@ def guess_language(subtitle):
     """
     # Try to decode if Chinese char exist
     word_list = subtitle.split('.')
+    cand_list = []
     if len(word_list) <= 2:
         return None
     if len(word_list) == 3:
         cand_string = word_list[-2]
+        cand_list.append(word_list[-2].lower())
     else:
         cand_string = word_list[-2] + word_list[-3]
+        cand_list.append(word_list[-2].lower())
+        cand_list.append(word_list[-3].lower())
 
     cand_string = cand_string.lower()
     # Parse the candidate string
     if 'chs' in cand_string:
+        return 'chi'
+    if 'chn' in cand_string:
         return 'chi'
     if 'chinese' in cand_string:
         return 'chi'
@@ -124,6 +130,14 @@ def guess_language(subtitle):
         return 'eng'
     if 'english' in cand_string:
         return 'eng'
+    if 'cn' in cand_list:
+        return 'chi'
+    if 'hk' in cand_list:
+        return 'chi'
+    if 'tw' in cand_list:
+        return 'chi'
+    if 'en' in cand_list:
+        return 'eng'
 
     return None
 
@@ -135,19 +149,34 @@ def guess_track_name(subtitle):
     """
     # Try to decode if Chinese char exist
     word_list = subtitle.split('.')
+    cand_list = []
     if len(word_list) <= 2:
         return None
     if len(word_list) == 3:
         cand_string = word_list[-2]
+        cand_list.append(word_list[-2].lower())
     else:
         cand_string = word_list[-2] + word_list[-3]
+        cand_list.append(word_list[-2].lower())
+        cand_list.append(word_list[-3].lower())
 
     cand_string = cand_string.lower()
     has_chi = False
     has_eng = False
     has_cht = False
     # Parse the candidate string
+    if 'cn' in cand_list:
+        has_chi = True
+    if 'hk' in cand_list:
+        has_cht = True
+    if 'tw' in cand_list:
+        has_cht = True
+    if 'en' in cand_list:
+        has_eng = True
+
     if 'chs' in cand_string:
+        has_chi = True
+    if 'chn' in cand_string:
         has_chi = True
     if 'cht' in cand_string:
         has_cht = True

@@ -199,13 +199,13 @@ def guess_track_name(subtitle):
 
     if has_eng and has_chi:
         return '中英双语'
+    if has_cht and has_eng:
+        return '繁体中英'
     if has_eng:
         return '英文'
     if has_chi:
         return '中文'
     if has_cht:
         return '繁体中文'
-    if has_cht and has_eng:
-        return '繁体中英'
 
     return None

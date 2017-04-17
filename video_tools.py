@@ -58,12 +58,18 @@ def get_video_basic_info(video_file):
             st = {}
             st['height'] = stream['coded_height']
             st['width'] = stream['coded_width']
-            st['bit_rate'] = stream['bit_rate']
+            try:
+                st['bit_rate'] = stream['bit_rate']
+            except:
+                st['bit_rate'] = 'n/a'
             info['video'].append(st)
             continue
         if stream['codec_type'] == 'audio':
             st = {}
-            st['bit_rate'] = stream['bit_rate']
+            try:
+                st['bit_rate'] = stream['bit_rate']
+            except:
+                st['bit_rate'] = 'n/a'
             st['channels'] = stream['channels']
             info['audio'].append(st)
             continue
@@ -78,13 +84,15 @@ def print_video_basic_info(video_file):
     """
     info = get_video_basic_info(video_file)
     for idx, video in enumerate(info['video']):
-        log_tools.log_info('[video stream %d] \033[01;32m%dx%d\033[0m, bit_rate: \033[01;32m%s\033[0m'
+        log_tools.log_info('[video stream %d] \033[01;32m%dx%d\033[0m, \
+bit_rate: \033[01;32m%s\033[0m'
                            % (idx,
-                              video['height'],
                               video['width'],
+                              video['height'],
                               video['bit_rate']))
 
     for idx, audio in enumerate(info['audio']):
-        log_tools.log_info('[audio stream %d] channels: \033[01;32m%d\033[0m, bit_rate: \033[01;32m%s\033[0m'
+        log_tools.log_info('[audio stream %d] channels: \033[01;32m%d\033[0m, \
+bit_rate: \033[01;32m%s\033[0m'
                            % (idx, audio['channels'], audio['bit_rate']))
     return info

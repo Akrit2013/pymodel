@@ -62,3 +62,21 @@ name. Supported color: %s' % (col_str, str(self._c_tab.keys())))
             self._c_tab = self._color_table_light
         else:
             self._c_tab = self._color_table_bold
+
+    def green(self, val_str):
+        """
+        Set the given str color to green and return
+        """
+        return self.set_color(val_str, 'green')
+
+    def red(self, val_str):
+        """
+        Set the given str color to red and return
+        """
+        return self.set_color(val_str, 'red')
+
+    def yellow(self, val_str):
+        """
+        Set the given str color to yellow and return
+        """
+        return self.set_color(val_str, 'yellow')

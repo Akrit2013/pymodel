@@ -45,14 +45,18 @@ def get_video_basic_info(video_file):
     Get the video basic information from the detailed info from
     the ffprobe
     The structure is
-    info['video'][0/1/2]['height'/'width'/'bit_rate']
-    info['audio'][0/1/2]['bit_rate'/'channels']
+    info['video'][0/1/2]['title'/'height'/'width'/'bit_rate']
+    info['audio'][0/1/2]['title'/'bit_rate'/'channels']
+    info['subtitle'][0/1/2]['title'/'codec_name'/'duration']
+    info['attachment'][0/1/2]['filename'/'mimetype']
     """
     rst = get_video_info(video_file)
     info = {}
     streams = rst['streams']
     info['video'] = []
     info['audio'] = []
+    info['subtitle'] = []
+    info['attachment'] = []
     for stream in streams:
         if stream['codec_type'] == 'video':
             st = {}
@@ -62,6 +66,10 @@ def get_video_basic_info(video_file):
                 st['bit_rate'] = stream['bit_rate']
             except:
                 st['bit_rate'] = 'n/a'
+            try:
+                st['title'] = stream['tags']['title']
+            except:
+                st['title'] = 'n/a'
             info['video'].append(st)
             continue
         if stream['codec_type'] == 'audio':
@@ -70,8 +78,44 @@ def get_video_basic_info(video_file):
                 st['bit_rate'] = stream['bit_rate']
             except:
                 st['bit_rate'] = 'n/a'
-            st['channels'] = stream['channels']
+            try:
+                st['title'] = stream['tags']['title']
+            except:
+                st['title'] = 'n/a'
+            try:
+                st['channels'] = stream['channels']
+            except:
+                st['channels'] = 'n/a'
+
             info['audio'].append(st)
+            continue
+        if stream['codec_type'] == 'subtitle':
+            st = {}
+            try:
+                st['title'] = stream['tags']['title']
+            except:
+                st['title'] = 'n/a'
+            try:
+                st['codec_name'] = stream['codec_name']
+            except:
+                st['codec_name'] = 'n/a'
+            try:
+                st['duration'] = stream['duration']
+            except:
+                st['duration'] = 'n/a'
+            info['subtitle'].append(st)
+            continue
+        if stream['codec_type'] == 'attachment':
+            st = {}
+            try:
+                st['filename'] = stream['tags']['filename']
+            except:
+                st['filename'] = 'n/a'
+            try:
+                st['mimetype'] = stream['tags']['mimetype']
+            except:
+                st['mimetype'] = 'n/a'
+            info['attachment'].append(st)
             continue
 
     return info
@@ -85,14 +129,26 @@ def print_video_basic_info(video_file):
     info = get_video_basic_info(video_file)
     for idx, video in enumerate(info['video']):
         log_tools.log_info('[video stream %d] \033[01;32m%dx%d\033[0m, \
-bit_rate: \033[01;32m%s\033[0m'
+title: \033[01;32m%s\033[0m, bit_rate: \033[01;32m%s\033[0m'
                            % (idx,
                               video['width'],
                               video['height'],
-                              video['bit_rate']))
+                              video['title'],
+                              str(video['bit_rate'])))
 
     for idx, audio in enumerate(info['audio']):
-        log_tools.log_info('[audio stream %d] channels: \033[01;32m%d\033[0m, \
-bit_rate: \033[01;32m%s\033[0m'
-                           % (idx, audio['channels'], audio['bit_rate']))
+        log_tools.log_info('[audio stream %d] title: \033[01;32m%s\033[0m, \
+channels: \033[01;32m%d\033[0m, bit_rate: \033[01;32m%s\033[0m'
+                           % (idx, audio['title'],
+                              audio['channels'], audio['bit_rate']))
+
+    for idx, sub in enumerate(info['subtitle']):
+        log_tools.log_info('[subtitle stream %d] title: \033[01;32m%s\033[0m, \
+codec_name: \033[01;32m%s\033[0m, duration: \033[01;32m%s\033[0m'
+                           % (idx, sub['title'],
+                              sub['codec_name'], sub['duration']))
+
+    for idx, att in enumerate(info['attachment']):
+        log_tools.log_info('[attachment stream %d] filename: \033[01;32m%s\033[0m, \
+mimetype: \033[01;32m%s\033[0m' % (idx, att['filename'], att['mimetype']))
     return info

@@ -4,6 +4,7 @@
 
 import json
 import os
+import time_tools
 import log_tools
 
 
@@ -152,3 +153,28 @@ codec_name: \033[01;32m%s\033[0m, duration: \033[01;32m%s\033[0m'
         log_tools.log_info('[attachment stream %d] filename: \033[01;32m%s\033[0m, \
 mimetype: \033[01;32m%s\033[0m' % (idx, att['filename'], att['mimetype']))
     return info
+
+
+def get_video_length(video_file):
+    """
+    Get the video length in seconds
+    If can not, return None
+    """
+    info = get_video_info(video_file)
+    try:
+        sec = info['format']['duration']
+    except:
+        return None
+    return float(sec)
+
+
+def get_video_length_str(video_file):
+    """
+    Get the video length in readable string
+    if not, return None
+    """
+    sec = get_video_length(video_file)
+    if sec is not None:
+        return time_tools.sec2time(sec)
+    else:
+        return None

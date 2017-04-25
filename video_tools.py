@@ -14,8 +14,7 @@ def get_video_info(video_file):
     """
     # Check if file exist
     if not os.path.isfile(video_file):
-        log_tools.log_err('Cannot find %s' % video_file)
-        return None
+        log_tools.log_warn('Cannot locate the %s' % video_file)
     cmd_line = 'ffprobe -v quiet -print_format json -show_format -show_streams'
     cmd_line = cmd_line + ' ' + video_file
 

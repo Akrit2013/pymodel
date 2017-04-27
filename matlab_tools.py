@@ -10,6 +10,18 @@ import scipy.io as sio
 import crash_on_ipy
 
 
+def _filter_vars(data_dict):
+    """
+    Check the var names, and exclude the invalid vars, such as '__xxxx__'
+    """
+    # exclude the '__xxx__' vars
+    for var_name in data_dict.keys():
+        if var_name[:2] == '__' and var_name[-2:] == '__':
+            data_dict.pop(var_name)
+
+    return data_dict
+
+
 def load_mat(mat_file, var_name=None, is_switch_HW=True, v73=True):
     """
     This function can load the mat file saved by matlab, and extract
@@ -66,6 +78,7 @@ def load_mat(mat_file, var_name=None, is_switch_HW=True, v73=True):
 
     try:
         if var_name is None:
+            matfile = _filter_vars(matfile)
             data = matfile.values()[0]
             if len(matfile) > 1:
                 log.warn('\033[33mWARNING\033[0m: The mat %s contains %d \

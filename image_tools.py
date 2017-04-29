@@ -243,3 +243,18 @@ def imcrop(im, crop_rate):
     im_crop = im[d0_beg:d0_beg+d0_size, d1_beg:d1_beg+d1_size, :]
 
     return im_crop
+
+
+def transpose(im):
+    """
+    Transpose the image and return
+    """
+    if len(im.shape) == 2:
+        im = im.transpose()
+    elif len(im.shape) == 3:
+        im = im.transpose([1, 0, 2])
+    else:
+        log.error('Can not transpose the image with \
+shape %s' % str(im.shape))
+
+    return im

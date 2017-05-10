@@ -1,3 +1,8 @@
+# NOTE:
+# Avoid use this lib, since the multi thread of python in linux
+# is very weak (I have not check it under windows)
+# Use multiprocess.pool.ThreadPool instead
+# ===============================================================
 # this is a wrapper for threading.
 # Since by default, the threading module can not give return value
 # this wrapper can get the return value just by calling the join()

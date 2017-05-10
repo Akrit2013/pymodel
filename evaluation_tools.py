@@ -12,7 +12,6 @@
 import numpy as np
 # import math
 import glog as log
-import pdb
 
 
 def _reshape(label, pred):

@@ -1,21 +1,22 @@
 #!/usr/bin/python
 
 # This lib include the class can perform the basic opeartions
-# on the lmdb database
-
-import lmdb_tools
+# on the leveldb lmdb_tools
 import glog as log
+import plyvel
+import color_lib
+import path_tools
 import timer_lib
 
 
-class lmdb:
+class leveldb:
     """
     This class can perform read / write / list and almost all
-    required operation on the lmdb database
+    required operation on the leveldb database
     """
     def __init__(self, db_file, readonly=True, echo=True, append=False):
         self.readonly = readonly
-        self.db_file = db_file
+        self._db_file = db_file
         self._echo = echo
         self._warn = True
         # If max commit interval time is 60 sec, it the commit interval
@@ -23,6 +24,10 @@ class lmdb:
         self._max_commit_interval = 60
         # The timer
         self._timer = timer_lib.timer(start=True)
+        self._color = color_lib.color(bold=True)
+        self._err = self._color.red('ERROR') + ': '
+        self._warn = self._color.yellow('WARNING') + ': '
+        self._info = self._color.green('INFO') + ': '
 
         # Define the dumper of the key and value
         self._key_dumper = None
@@ -34,43 +39,58 @@ class lmdb:
         self._buf_counter = 0
         self._cur = None
         self._iter = None
+        # The keylist of the keys
+        self._key_list = []
+        # If true, need to regenerate the key list
+        self._dirty_key_list = True
 
         if readonly:
-            self.db = lmdb_tools.open_ro(db_file)
+            if not path_tools.check_path(self._db_file, False):
+                log.error(self._err + 'Can not find the ' +
+                          self._color.yellow(self._db_file))
+                return
+            self._db = plyvel.DB(self._db_file)
         else:
-            self.db = lmdb_tools.open(db_file, append=append)
+            self._db = plyvel.DB(self._db_file)
 
-        if self.db is None:
+        if self._db is None:
             log.error('\033[01;31mERROR\033[0m: Can not open the \
-db file \033[32m%s\033[0m' % db_file)
+db file \033[32m%s\033[0m' % self._db_file)
             return
 
-        self._txn = self.db.begin(write=not self.readonly)
-
         if echo:
-            log.info('Open %s, size: \033[01;31m%d\033[0m'
-                     % (db_file, self.get_entries()))
+            log.info(self._info + 'Open ' +
+                     self._color.yellow(self._db_file))
 
     def __del__(self):
-        self._txn.commit()
         if self._echo:
-            log.info('Close \033[0;32m%s\033[0m, \
-entries: \033[0;31m%d\033[0m' % (self.db_file, self.get_entries()))
-        self.db.close()
+            db_size = 'n/a'
+            if not self._dirty_key_list:
+                db_size = str(len(self._key_list))
+            log.info(self._info + 'Close \033[0;32m%s\033[0m, \
+db size: %s' % (self._db_file, self._color.red(db_size)))
+        self._db.close()
 
     def __iter__(self):
-        self._cur = self._txn.cursor()
-        self._iter = self._cur.__iter__()
+        self._iter = self._db.iterator()
         return self
+
+    def _gen_keylist(self, num=None):
+        if self._dirty_key_list:
+            self._key_list = []
+            counter = 0
+            for key, val in self._db.iterator():
+                self._key_list.append(key)
+                counter += 1
+                if num is not None and counter > num:
+                    return
+            self._dirty_key_list = False
 
     def next(self):
         key, val = self._iter.next()
         return self._parse(key, self._key_parser), \
             self._parse(val, self._val_parser)
         # raise StopIteration
-
-    def set_buf_size(self, buf_size):
-        self._buf_size = buf_size
 
     def set_key_dumper(self, dumper_func):
         self._key_dumper = dumper_func
@@ -91,11 +111,12 @@ entries: \033[0;31m%d\033[0m' % (self.db_file, self.get_entries()))
         """
         Check if the database already have the key
         """
+        self._gen_keylist()
         key = self._dump(key, self._key_dumper)
-        val = self._txn.get(key)
-        if val is None:
+        if key in self._key_list:
+            return True
+        else:
             return False
-        return True
 
     def get_keylist(self, num=None):
         """
@@ -106,18 +127,12 @@ entries: \033[0;31m%d\033[0m' % (self.db_file, self.get_entries()))
             the whole dataset, it is useful when the dataset is too
             large to get the whole keylist
         """
-        key_list = []
-        with self._txn.cursor() as cur:
-            for key, val in cur:
-                key = self._parse(key, self._key_parser)
-                key_list.append(key)
-                if num is not None and len(key_list) >= num:
-                    break
-        return key_list
+        self._gen_keylist(num)
+        return self._key_list
 
     def get_entries(self):
-        # self.commit()
-        return lmdb_tools.get_entries(self.db)
+        self._gen_keylist()
+        return len(self._key_list)
 
     def get(self, key):
         """
@@ -125,11 +140,12 @@ entries: \033[0;31m%d\033[0m' % (self.db_file, self.get_entries()))
         """
         val = None
         key = self._dump(key, self._key_dumper)
-        val = self._txn.get(key)
+        val = self._db.get(key)
         if val is None:
             if self._warn:
                 log.error('\033[01;31mERROR:\033[0m Can not get \
-key: \033[0;31m%s\033[0m from db %s' % (key, self.db_file))
+key: \033[0;31m%s\033[0m from db %s'
+                          % (key, self._color.yellow(self._db_file)))
             return None
 
         return self._parse(val, self._val_parser)
@@ -137,13 +153,8 @@ key: \033[0;31m%s\033[0m from db %s' % (key, self.db_file))
     def put(self, key, val):
         key = self._dump(key, self._key_dumper)
         val = self._dump(val, self._val_dumper)
-        self._txn.put(key, val)
-        self._buf_counter += 1
-        if self._buf_counter > self._buf_size or \
-                self._timer.elapse() > self._max_commit_interval:
-            self.commit()
-            self._timer.start()
-            self._buf_counter = 0
+        self._db.put(key, val)
+        self._dirty_key_list = True
 
     def write_dict(self, key_val_dict):
         """
@@ -153,36 +164,26 @@ key: \033[0;31m%s\033[0m from db %s' % (key, self.db_file))
         for key in key_val_dict:
             val = key_val_dict[key]
             self.put(key, val)
-        self.commit()
 
     def load_dict(self):
         """
         Load the whole db as a dict
         """
         rst_dict = {}
-        with self._txn.cursor() as cur:
-            for key, val in cur:
-                key = self._parse(key, self._key_parser)
-                val = self._parse(val, self._val_parser)
-                rst_dict[key] = val
+        for key, val in self._db.iterator():
+            key = self._parse(key, self._key_parser)
+            val = self._parse(val, self._val_parser)
+            rst_dict[key] = val
         return rst_dict
 
     def delete(self, key):
         key = self._dump(key, self._key_dumper)
-        self._txn.delete(key)
-        self._buf_counter += 1
-        if self._buf_counter > self._buf_size:
-            self.commit()
-            self._buf_counter = 0
+        self._db.delete(key)
+        self._dirty_key_list = True
 
     def delete_keylist(self, key_list):
         for key in key_list:
             self.delete(key)
-        self.commit()
-
-    def commit(self):
-        self._txn.commit()
-        self._txn = self.db.begin(write=not self.readonly)
 
     def _dump(self, val, dumper):
         """
@@ -204,13 +205,3 @@ str() to convert is' % val_str)
         if parser is not None:
             return parser(val)
         return val
-
-    def _get_keylist(self):
-        """
-        NOTE: this function will NOT use the parser to process the key
-        """
-        key_list = []
-        with self._txn.cursor() as cur:
-            for key, val in cur:
-                key_list.append(key)
-        return key_list

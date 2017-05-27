@@ -31,7 +31,7 @@ def open(lmdb_file, append=False):
     the exist lmdb, and directly write based on it
     """
     if os.path.exists(lmdb_file) and append is False:
-        print('\033[0;31m%s\033[0m is already exists.' % lmdb_file)
+        print('\033[0;31m%s\033[0m already exists.' % lmdb_file)
         k = raw_input('Do you want to delete it?[y/n]:')
         if k == 'y' or k == 'Y':
             log.warn('Delete the %s file' % lmdb_file)

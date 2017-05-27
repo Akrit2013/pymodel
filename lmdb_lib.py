@@ -108,7 +108,7 @@ entries: \033[0;31m%d\033[0m' % (self.db_file, self.get_entries()))
         """
         key_list = []
         with self._txn.cursor() as cur:
-            for key, val in cur:
+            for key, _ in cur:
                 key = self._parse(key, self._key_parser)
                 key_list.append(key)
                 if num is not None and len(key_list) >= num:

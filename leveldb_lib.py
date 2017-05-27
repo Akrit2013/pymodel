@@ -6,6 +6,8 @@ import glog as log
 import plyvel
 import color_lib
 import path_tools
+import shutil
+import sys
 import timer_lib
 
 
@@ -15,7 +17,6 @@ class leveldb:
     required operation on the leveldb database
     """
     def __init__(self, db_file, readonly=True, echo=True, append=False):
-        self.readonly = readonly
         self._db_file = db_file
         self._echo = echo
         self._warn = True
@@ -51,7 +52,21 @@ class leveldb:
                 return
             self._db = plyvel.DB(self._db_file)
         else:
-            self._db = plyvel.DB(self._db_file)
+            if path_tools.check_path(self._db_file, False):
+                print('%s %s already exists.'
+                      % (self._warn, self._color.red(self._db_file)))
+                k = raw_input('Do you want to delete it?[y/n]:')
+                if k == 'y' or k == 'Y':
+                    log.warn('Delete the %s file' % self._db_file)
+                    shutil.rmtree(self._db_file)
+                elif k == 'n' or k == 'N':
+                    log.warn('Keep the %s file, and new entries will be added'
+                             % self._db_file)
+                else:
+                    log.error('Wrong key input, exit the program')
+                    sys.exit(2)
+
+            self._db = plyvel.DB(self._db_file, create_if_missing=True)
 
         if self._db is None:
             log.error('\033[01;31mERROR\033[0m: Can not open the \
@@ -79,7 +94,7 @@ db size: %s' % (self._db_file, self._color.red(db_size)))
         if self._dirty_key_list:
             self._key_list = []
             counter = 0
-            for key, val in self._db.iterator():
+            for key in self._db.iterator(include_value=False):
                 self._key_list.append(key)
                 counter += 1
                 if num is not None and counter > num:

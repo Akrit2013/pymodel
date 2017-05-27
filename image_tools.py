@@ -8,7 +8,7 @@ import scipy.misc as scm
 from scipy.ndimage.interpolation import zoom
 import matplotlib.pyplot as plt
 import glog as log
-import Image
+from PIL import Image
 
 
 def imread(im_file):

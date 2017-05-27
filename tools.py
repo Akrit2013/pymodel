@@ -9,10 +9,12 @@ import collections
 import os
 
 
-def get_char():
+def get_char(disp_str=None):
     """This function return a char from the terminal WITHOUT echo the
     input.
     """
+    if disp_str is not None:
+        print(disp_str)
     # Flush the stdin first
     termios.tcflush(sys.stdin, termios.TCIFLUSH)
     # Flush the stdout

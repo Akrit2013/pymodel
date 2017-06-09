@@ -6,7 +6,8 @@ import random
 import matplotlib
 # Change the backend to make sure compatiable with Ipython
 # This must be put before import the pyplot
-# matplotlib.use('QT5Agg')
+#matplotlib.use('QT4Agg')
+#matplotlib.use('GTKAgg')
 from PIL import Image
 import matplotlib.pyplot as plt
 import glog as log
